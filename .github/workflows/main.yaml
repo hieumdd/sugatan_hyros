@@ -10,7 +10,7 @@ env:
   REGION: us-central1
 
 jobs:
-  gcf:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,4 +32,4 @@ jobs:
           --runtime=python38
           --trigger-http
           --service-account=${{ secrets.GCP_SA }}
-          --set-env-vars=API_KEY=${{ env.API_KEY }},PROJECT_ID=${{ secrets.PROJECT_ID }},TOPIC_ID=${{ env.TOPIC_ID }}
+          --set-env-vars=API_KEY=${{ secrets.API_KEY }},PROJECT_ID=${{ secrets.PROJECT_ID }},TOPIC_ID=${{ env.TOPIC_ID }}
