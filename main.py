@@ -2,6 +2,8 @@ import json
 import base64
 
 from models import AdAttribution
+from broadcast import broadcast
+
 
 def main(request):
     request_json = request.get_json(silent=True)
@@ -10,16 +12,16 @@ def main(request):
     data = json.loads(base64.b64decode(data_bytes).decode("utf-8"))
     print(data)
 
-    if 'broadcast' in data:
-        results = None
-    elif 'table' in data:
+    if "broadcast" in data:
+        results = broadcast(data)
+    elif "table" in data:
         job = AdAttribution.factory(
-            data['table'],
-            data.get('start'),
-            data.get('end'),
+            data["table"],
+            data.get("start"),
+            data.get("end"),
         )
         results = job.run()
-    
+
     responses = {
         "pipelines": "Hyros",
         "results": results,

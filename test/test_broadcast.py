@@ -5,12 +5,12 @@ from .utils import encode_data
 
 
 def test_broadcast():
-    """Test the scripts for broadcast mode"""    
-    
+    """Test the scripts for broadcast mode"""
+
     data = {
-        "broadcast": True
+        "broadcast": "AdAttribution",
     }
     message = encode_data(data)
     req = Mock(get_json=Mock(return_value=message), args=message)
     res = main(req)
-    assert res['results']['message_sent'] > 0
+    assert res["results"]["message_sent"] > 0
