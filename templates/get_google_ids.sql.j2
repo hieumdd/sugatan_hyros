@@ -1,0 +1,28 @@
+SELECT
+    DISTINCT s.`CampaignId` AS `id`
+FROM
+    `SBLA_GAds`.`AdGroup_4175347744` s
+    INNER JOIN `SBLA_GAds`.`AdGroupStats_4175347744` d
+    ON s.`CampaignId` = d.`CampaignId`
+    AND s.`AdGroupId` = d.`AdGroupId`
+WHERE
+    `TrackingUrlTemplate` = '{lpurl}?gc_id={campaignid}&h_ad_id={creative}'
+    AND `Date` >= date_add(CURRENT_DATE(), INTERVAL -1 DAY)
+    AND `Cost` > 0
+    AND `Clicks` > 0
+    
+{# SELECT
+    DISTINCT `CampaignId` AS `id`
+FROM
+    `SBLA_GAds`.`AdGroup_4175347744`
+WHERE
+    `TrackingUrlTemplate` = '{lpurl}?gc_id={campaignid}&h_ad_id={creative}'
+    AND `CampaignId` IN (
+        SELECT
+            DISTINCT `CampaignId`
+        FROM
+            `SBLA_GAds`.`AdGroupStats_4175347744`
+        WHERE
+            `Date` >= date_add(CURRENT_DATE(), INTERVAL -1 DAY)
+            AND `Cost` > 0
+            AND `Clicks` > 0) #}

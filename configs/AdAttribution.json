@@ -1,0 +1,57 @@
+{
+    "keys": {
+        "p_key": [
+            "id",
+            "start_time",
+            "end_time"
+        ],
+        "incre_key": "_batched_at",
+        "time_key": "start_time"
+    },
+    "schema": [
+        {
+            "name": "id",
+            "type": "STRING"
+        },
+        {
+            "name": "sales",
+            "type": "FLOAT"
+        },
+        {
+            "name": "calls",
+            "type": "FLOAT"
+        },
+        {
+            "name": "unique_sales",
+            "type": "FLOAT"
+        },
+        {
+            "name": "refund",
+            "type": "FLOAT"
+        },
+        {
+            "name": "revenue",
+            "type": "FLOAT"
+        },
+        {
+            "name": "recurring_revenue",
+            "type": "FLOAT"
+        },
+        {
+            "name": "total_revenue",
+            "type": "FLOAT"
+        },
+        {
+            "name": "start_time",
+            "type": "TIMESTAMP"
+        },
+        {
+            "name": "end_time",
+            "type": "TIMESTAMP"
+        },
+        {
+            "name": "_batched_at",
+            "type": "TIMESTAMP"
+        }
+    ]
+}
