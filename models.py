@@ -74,7 +74,7 @@ class AdAttribution(metaclass=ABCMeta):
             )
             rows = BQ_CLIENT.query(rendered_query).result()
             row = [dict(row.items()) for row in rows][0]
-            start = row["incre"].replace(tzinfo=None)
+            start = row["incre"].replace(tzinfo=None) - timedelta(days=10)
         return start, end
 
     def get_ids(self):
@@ -149,7 +149,6 @@ class AdAttribution(metaclass=ABCMeta):
         return results
 
     def transform(self, rows):
-        rows
         rows = [
             {
                 **row,

@@ -7,7 +7,7 @@ FROM
     AND s.`AdGroupId` = d.`AdGroupId`
 WHERE
     `TrackingUrlTemplate` = '{lpurl}?gc_id={campaignid}&h_ad_id={creative}'
-    AND `Date` >= date_add(CURRENT_DATE(), INTERVAL -1 DAY)
+    AND `Date` >= date_add(CURRENT_DATE(), INTERVAL -2 DAY)
     AND `Cost` > 0
     AND `Clicks` > 0
     
