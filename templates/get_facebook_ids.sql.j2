@@ -1,9 +1,0 @@
-SELECT
-    DISTINCT `ad_group_id` AS `id`
-FROM
-    `SBLA_7c1v`.`FBADS_AD_*`
-WHERE
-    creative_url_tags = {% raw %}'fbc_id={{adset.id}}&h_ad_id={{ad.id}}'{% endraw %}
-    AND `date` >= date_add(CURRENT_DATE(), INTERVAL -30 DAY)
-    AND `cost` > 0
-    AND `impressions` > 0
