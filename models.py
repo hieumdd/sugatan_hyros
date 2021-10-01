@@ -5,10 +5,11 @@ import asyncio
 from abc import ABCMeta, abstractmethod
 
 import aiohttp
+import requests
 from google.cloud import bigquery
 import jinja2
 
-NOW = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+NOW = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 DATE_FORMAT = "%Y-%m-%d"
 
 BASE_URL = "https://api.hyros.com/v1/api/v1.0"
@@ -27,7 +28,7 @@ TEMPLATE_ENV = jinja2.Environment(loader=TEMPLATE_LOADER)
 class AdAttribution(metaclass=ABCMeta):
     def __init__(self, start, end):
         self.keys, self.schema = self.get_config()
-        self.start, self.end = self.get_time_range(start, end)
+        self.start, self.end = self._get_date_range(start, end)
 
     @staticmethod
     def factory(table, start, end):
@@ -59,23 +60,15 @@ class AdAttribution(metaclass=ABCMeta):
             config = json.load(f)
         return config["keys"], config["schema"]
 
-    def get_time_range(self, _start, _end):
-        if _start and _end:
-            start, end = tuple(
-                datetime.strptime(i, DATE_FORMAT) for i in (_start, _end)
-            )
+    def _get_date_range(self, start, end):
+        if start and end:
+            if isinstance(start, datetime):
+                _start, _end = start, end
+            else:
+                _start, _end = [datetime.strptime(i, DATE_FORMAT) for i in (start, end)]
         else:
-            end = NOW
-            template = TEMPLATE_ENV.get_template("read_max_incremental.sql.j2")
-            rendered_query = template.render(
-                dataset=DATASET,
-                table=f"AdAttribution_{self.table}",
-                incre_key=self.keys["time_key"],
-            )
-            rows = BQ_CLIENT.query(rendered_query).result()
-            row = [dict(row.items()) for row in rows][0]
-            start = row["incre"].replace(tzinfo=None) - timedelta(days=10)
-        return start, end
+            _start, _end = [NOW - timedelta(days=30), NOW]
+        return _start, _end
 
     def get_ids(self):
         template = TEMPLATE_ENV.get_template(f"{self.id_template}.sql.j2")
@@ -84,33 +77,22 @@ class AdAttribution(metaclass=ABCMeta):
         rows = [dict(row.items()) for row in rows]
         return [row["id"] for row in rows]
 
-    def get(self):
-        dt_range = []
-        _start = self.start
-        while _start < self.end:
-            dt_range.append(_start)
-            _start += timedelta(hours=1)
-        rows = asyncio.run(self._get(dt_range))
-        return [i for j in rows for i in j]
-
-    async def _get(self, dt_range):
-        connector = aiohttp.TCPConnector(limit=50)
-        timeout = aiohttp.ClientTimeout(total=540)
+    def get(self, session):
+        date_range = [
+            self.start + timedelta(i)
+            for i in range(int((self.end - self.start).days) + 1)
+        ]
         ids = self.get_ids()
-        async with aiohttp.ClientSession(
-            connector=connector,
-            timeout=timeout,
-        ) as sessions:
-            tasks = [
-                asyncio.create_task(self._get_one(sessions, ids, dt)) for dt in dt_range
-            ]
-            return await asyncio.gather(*tasks)
-
-    async def _get_one(self, sessions, ids, dt):
-        start = dt.isoformat()
-        end = (dt + timedelta(hours=1)).isoformat()
-        url = f"{BASE_URL}/attribution"
-        params = {
+        rows = self._get_one(session, ids, self.start, self.end)
+        rows
+        return rows
+    
+    def _get_one(self, session, ids, date, date_end):
+        start = date.isoformat(timespec='seconds')
+        end = (date + timedelta(days=1)).isoformat(timespec='seconds')
+        with session.get(
+            f"{BASE_URL}/attribution",
+            params={
             "attributionModel": "last_click",
             "startDate": start,
             "endDate": end,
@@ -129,37 +111,32 @@ class AdAttribution(metaclass=ABCMeta):
             "ids": ",".join([str(i) for i in ids]),
             "currency": "usd",
             "dayOfAttribution": json.dumps(False),
-        }
-        try:
-            async with sessions.get(url, params=params, headers=HEADERS) as r:
-                r.raise_for_status()
-                res = await r.json()
-            results = res["result"]
-            results = [
+        },
+        headers=HEADERS
+        ) as r:
+            r.raise_for_status()
+            res = r.json()
+        results = [
                 {
                     **result,
                     "start_time": start,
                     "end_time": end,
                 }
-                for result in results
+                for result in res['result']
             ]
-        except Exception as e:
-            print(e)
-            raise e
-        return results
+        return results + self._get_one(session, ids, date + timedelta(days=1), date_end) if date < date_end else results
 
-    def transform(self, rows):
-        rows = [
+    def _transform(self, rows):
+        return [
             {
                 **row,
                 "_batched_at": NOW.isoformat(timespec="seconds"),
             }
             for row in rows
         ]
-        return rows
 
-    def load(self, rows):
-        return BQ_CLIENT.load_table_from_json(
+    def _load(self, rows):
+        output_rows = BQ_CLIENT.load_table_from_json(
             rows,
             f"{DATASET}._stage_AdAttribution_{self.table}",
             job_config=bigquery.LoadJobConfig(
@@ -167,7 +144,7 @@ class AdAttribution(metaclass=ABCMeta):
                 write_disposition="WRITE_APPEND",
                 schema=self.schema,
             ),
-        ).result()
+        ).result().output_rows
 
     def update(self):
         template = TEMPLATE_ENV.get_template("update_from_stage.sql.j2")
@@ -180,7 +157,8 @@ class AdAttribution(metaclass=ABCMeta):
         BQ_CLIENT.query(rendered_query)
 
     def run(self):
-        rows = self.get()
+        with requests.Session() as session:
+            rows = self.get(session)
         responses = {
             "table": self.table,
             "start": self.start,
