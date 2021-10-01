@@ -1,4 +1,4 @@
-name: CD
+name: CI/CD
 on:
   push:
     branches: [master]
@@ -28,8 +28,8 @@ jobs:
           --entry-point=main
           --timeout=530
           --project=${{ secrets.PROJECT_ID }}
-          --memory=2048MB
-          --runtime=python38
+          --memory=1024MB
+          --runtime=python39
           --trigger-http
           --service-account=${{ secrets.GCP_SA }}
-          --set-env-vars=API_KEY=${{ secrets.API_KEY }},PROJECT_ID=${{ secrets.PROJECT_ID }},TOPIC_ID=${{ env.TOPIC_ID }}
+          --set-env-vars=API_KEY=${{ secrets.API_KEY }}
