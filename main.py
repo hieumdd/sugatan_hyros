@@ -1,30 +1,33 @@
-import json
-import base64
-
-from models import AdAttribution
-from broadcast import broadcast
+from models import FacebookAdset, GoogleCampaign
 
 
 def main(request):
-    request_json = request.get_json(silent=True)
-    message = request_json["message"]
-    data_bytes = message["data"]
-    data = json.loads(base64.b64decode(data_bytes).decode("utf-8"))
+    data = request.get_json(silent=True)
     print(data)
 
-    if "broadcast" in data:
-        results = broadcast(data)
+    if "tasks" in data:
+        results = [
+            i(
+                data.get("start"),
+                data.get("end"),
+            ).run()
+            for i in [FacebookAdset, GoogleCampaign]
+        ]
     elif "table" in data:
-        job = AdAttribution.factory(
-            data["table"],
-            data.get("start"),
-            data.get("end"),
-        )
-        results = job.run()
-
-    responses = {
-        "pipelines": "Hyros",
+        if data["table"] == "FacebookAdset":
+            job = FacebookAdset
+        elif data["table"] == "GoogleCampaign":
+            job = GoogleCampaign
+        else:
+            raise ValueError(data["table"])
+        results = [
+            job(
+                data.get("start"),
+                data.get("end"),
+            ).run()
+        ]
+    response = {
         "results": results,
     }
-    print(responses)
-    return responses
+    print(response)
+    return response

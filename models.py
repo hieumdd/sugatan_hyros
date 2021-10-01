@@ -1,13 +1,10 @@
 import os
 import json
 from datetime import datetime, timedelta
-import asyncio
 from abc import ABCMeta, abstractmethod
 
-import aiohttp
 import requests
 from google.cloud import bigquery
-import jinja2
 
 NOW = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 DATE_FORMAT = "%Y-%m-%d"
@@ -21,29 +18,26 @@ HEADERS = {
 BQ_CLIENT = bigquery.Client()
 DATASET = "SBLA_Hyros"
 
-TEMPLATE_LOADER = jinja2.FileSystemLoader("./templates")
-TEMPLATE_ENV = jinja2.Environment(loader=TEMPLATE_LOADER)
-
 
 class AdAttribution(metaclass=ABCMeta):
-    def __init__(self, start, end):
-        self.keys, self.schema = self.get_config()
-        self.start, self.end = self._get_date_range(start, end)
-
-    @staticmethod
-    def factory(table, start, end):
-        args = (start, end)
-        if table == "facebook":
-            return FacebooAdAttribution(*args)
-        elif table == "google":
-            return GoogleAdAttribution(*args)
-        else:
-            raise NotImplementedError(table)
-
-    @property
-    @abstractmethod
-    def id_template(self):
-        pass
+    keys = {
+        "p_key": ["id", "start_time", "end_time"],
+        "incre_key": "_batched_at",
+        "time_key": "start_time",
+    }
+    schema = [
+        {"name": "id", "type": "STRING"},
+        {"name": "sales", "type": "FLOAT"},
+        {"name": "calls", "type": "FLOAT"},
+        {"name": "unique_sales", "type": "FLOAT"},
+        {"name": "refund", "type": "FLOAT"},
+        {"name": "revenue", "type": "FLOAT"},
+        {"name": "recurring_revenue", "type": "FLOAT"},
+        {"name": "total_revenue", "type": "FLOAT"},
+        {"name": "start_time", "type": "TIMESTAMP"},
+        {"name": "end_time", "type": "TIMESTAMP"},
+        {"name": "_batched_at", "type": "TIMESTAMP"},
+    ]
 
     @property
     @abstractmethod
@@ -52,79 +46,64 @@ class AdAttribution(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def table(self):
+    def id_query(self):
         pass
 
-    def get_config(self):
-        with open("configs/AdAttribution.json", "r") as f:
-            config = json.load(f)
-        return config["keys"], config["schema"]
+    def __init__(self, start, end):
+        self.table = self.__class__.__name__
+        self.start, self.end = (
+            [datetime.strptime(i, DATE_FORMAT) for i in (start, end)]
+            if start and end
+            else [NOW - timedelta(days=30), NOW]
+        )
 
-    def _get_date_range(self, start, end):
-        if start and end:
-            if isinstance(start, datetime):
-                _start, _end = start, end
-            else:
-                _start, _end = [datetime.strptime(i, DATE_FORMAT) for i in (start, end)]
-        else:
-            _start, _end = [NOW - timedelta(days=30), NOW]
-        return _start, _end
+    def _get(self, session):
+        ids_results = BQ_CLIENT.query(self.id_query).result()
+        ids = [dict(row.items())["id"] for row in ids_results]
+        return self._get_one(session, ids, self.start, self.end)
 
-    def get_ids(self):
-        template = TEMPLATE_ENV.get_template(f"{self.id_template}.sql.j2")
-        rendered_query = template.render()
-        rows = BQ_CLIENT.query(rendered_query).result()
-        rows = [dict(row.items()) for row in rows]
-        return [row["id"] for row in rows]
-
-    def get(self, session):
-        date_range = [
-            self.start + timedelta(i)
-            for i in range(int((self.end - self.start).days) + 1)
-        ]
-        ids = self.get_ids()
-        rows = self._get_one(session, ids, self.start, self.end)
-        rows
-        return rows
-    
     def _get_one(self, session, ids, date, date_end):
-        start = date.isoformat(timespec='seconds')
-        end = (date + timedelta(days=1)).isoformat(timespec='seconds')
+        start = date.isoformat(timespec="seconds")
+        end = (date + timedelta(days=1)).isoformat(timespec="seconds")
         with session.get(
             f"{BASE_URL}/attribution",
             params={
-            "attributionModel": "last_click",
-            "startDate": start,
-            "endDate": end,
-            "level": self.level,
-            "fields": ",".join(
-                [
-                    "sales",
-                    "revenue",
-                    "calls",
-                    "total_revenue",
-                    "recurring_revenue",
-                    "refund",
-                    "unique_sales",
-                ]
-            ),
-            "ids": ",".join([str(i) for i in ids]),
-            "currency": "usd",
-            "dayOfAttribution": json.dumps(False),
-        },
-        headers=HEADERS
+                "attributionModel": "last_click",
+                "startDate": start,
+                "endDate": end,
+                "level": self.level,
+                "fields": ",".join(
+                    [
+                        "sales",
+                        "revenue",
+                        "calls",
+                        "total_revenue",
+                        "recurring_revenue",
+                        "refund",
+                        "unique_sales",
+                    ]
+                ),
+                "ids": ",".join([str(i) for i in ids]),
+                "currency": "usd",
+                "dayOfAttribution": json.dumps(False),
+            },
+            headers=HEADERS,
         ) as r:
             r.raise_for_status()
             res = r.json()
         results = [
-                {
-                    **result,
-                    "start_time": start,
-                    "end_time": end,
-                }
-                for result in res['result']
-            ]
-        return results + self._get_one(session, ids, date + timedelta(days=1), date_end) if date < date_end else results
+            {
+                **result,
+                "start_time": start,
+                "end_time": end,
+            }
+            for result in res["result"]
+        ]
+        return (
+            results + self._get_one(session, ids, date + timedelta(days=1), date_end)
+            if date < date_end
+            else results
+        )
 
     def _transform(self, rows):
         return [
@@ -136,72 +115,83 @@ class AdAttribution(metaclass=ABCMeta):
         ]
 
     def _load(self, rows):
-        output_rows = BQ_CLIENT.load_table_from_json(
-            rows,
-            f"{DATASET}._stage_AdAttribution_{self.table}",
-            job_config=bigquery.LoadJobConfig(
-                create_disposition="CREATE_IF_NEEDED",
-                write_disposition="WRITE_APPEND",
-                schema=self.schema,
-            ),
-        ).result().output_rows
-
-    def update(self):
-        template = TEMPLATE_ENV.get_template("update_from_stage.sql.j2")
-        rendered_query = template.render(
-            dataset=DATASET,
-            table=f"AdAttribution_{self.table}",
-            p_key=",".join(self.keys["p_key"]),
-            incre_key=self.keys["incre_key"],
+        output_rows = (
+            BQ_CLIENT.load_table_from_json(
+                rows,
+                f"{DATASET}.AdAttribution_{self.table}",
+                job_config=bigquery.LoadJobConfig(
+                    create_disposition="CREATE_IF_NEEDED",
+                    write_disposition="WRITE_APPEND",
+                    schema=self.schema,
+                ),
+            )
+            .result()
+            .output_rows
         )
-        BQ_CLIENT.query(rendered_query)
+        self._update()
+        return output_rows
+
+    def _update(self):
+        query = f"""
+        CREATE OR REPLACE TABLE `{DATASET}`.`AdAttribution_{self.table}` AS
+        SELECT * EXCEPT (`row_num`) FROM
+        (
+            SELECT
+                *,
+                ROW_NUMBER() over (
+                    PARTITION BY {','.join(self.keys['p_key'])}
+                    ORDER BY {self.keys['incre_key']} DESC) AS `row_num`
+                FROM
+                    `{DATASET}`.`AdAttribution_{self.table}`
+            )
+        WHERE
+            `row_num` = 1
+        """
+        BQ_CLIENT.query(query).result()
 
     def run(self):
         with requests.Session() as session:
-            rows = self.get(session)
+            rows = self._get(session)
         responses = {
             "table": self.table,
-            "start": self.start,
-            "end": self.end,
+            "start": self.start.strftime(DATE_FORMAT),
+            "end": self.end.strftime(DATE_FORMAT),
             "num_processed": len(rows),
         }
         if len(rows) > 0:
-            rows = self.transform(rows)
-            loads = self.load(rows)
-            self.update()
-            responses["output_rows"] = loads.output_rows
+            rows = self._transform(rows)
+            responses["output_rows"] = self._load(rows)
         return responses
 
 
-class FacebooAdAttribution(AdAttribution):
-    def __init__(self, start, end):
-        super().__init__(start, end)
-
-    @property
-    def id_template(self):
-        return "get_facebook_ids"
-
-    @property
-    def level(self):
-        return "facebook_adset"
-
-    @property
-    def table(self):
-        return "FacebookAdSet"
+class FacebookAdset(AdAttribution):
+    level = "facebook_adset"
+    id_query = """
+    SELECT
+        DISTINCT `ad_group_id` AS `id`
+    FROM
+        `SBLA_7c1v`.`FBADS_AD_*`
+    WHERE
+        creative_url_tags = 'fbc_id={{adset.id}}&h_ad_id={{ad.id}}'
+        AND `date` >= date_add(CURRENT_DATE(), INTERVAL -30 DAY)
+        AND `cost` > 0
+        AND `impressions` > 0
+    """
 
 
-class GoogleAdAttribution(AdAttribution):
-    def __init__(self, start, end):
-        super().__init__(start, end)
-
-    @property
-    def id_template(self):
-        return "get_google_ids"
-
-    @property
-    def level(self):
-        return "google_campaign"
-
-    @property
-    def table(self):
-        return "GoogleCampaign"
+class GoogleCampaign(AdAttribution):
+    level = "google_campaign"
+    id_query = """
+        SELECT
+        DISTINCT s.`CampaignId` AS `id`
+    FROM
+        `SBLA_GAds`.`AdGroup_4175347744` s
+        INNER JOIN `SBLA_GAds`.`AdGroupStats_4175347744` d
+        ON s.`CampaignId` = d.`CampaignId`
+        AND s.`AdGroupId` = d.`AdGroupId`
+    WHERE
+        `TrackingUrlTemplate` = '{lpurl}?gc_id={campaignid}&h_ad_id={creative}'
+        AND `Date` >= date_add(CURRENT_DATE(), INTERVAL -2 DAY)
+        AND `Cost` > 0
+        AND `Clicks` > 0
+    """
