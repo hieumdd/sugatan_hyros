@@ -6,10 +6,7 @@ authors = ["HM <hieumdd@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "~3.9"
-aiohttp = "^3.7.4"
-Jinja2 = "^3.0.1"
 google-cloud-bigquery = "^2.28.0"
-google-cloud-pubsub = "^2.8.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
