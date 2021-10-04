@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 from main import main
 
-START, END = ("2021-09-01", "2021-09-10")
+START, END = ("2021-09-01", "2021-10-04")
 
 
 @pytest.mark.parametrize(

@@ -63,14 +63,12 @@ class AdAttribution(metaclass=ABCMeta):
         return self._get_one(session, ids, self.start, self.end)
 
     def _get_one(self, session, ids, date, date_end):
-        start = date.isoformat(timespec="seconds")
-        end = (date + timedelta(days=1)).isoformat(timespec="seconds")
         with session.get(
             f"{BASE_URL}/attribution",
             params={
                 "attributionModel": "last_click",
-                "startDate": start,
-                "endDate": end,
+                "startDate": date.isoformat(timespec="seconds"),
+                "endDate": date.isoformat(timespec="seconds"),
                 "level": self.level,
                 "fields": ",".join(
                     [
@@ -94,8 +92,8 @@ class AdAttribution(metaclass=ABCMeta):
         results = [
             {
                 **result,
-                "start_time": start,
-                "end_time": end,
+                "start_time": date.isoformat(timespec="seconds"),
+                "end_time": date.isoformat(timespec="seconds"),
             }
             for result in res["result"]
         ]
