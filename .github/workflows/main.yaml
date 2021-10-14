@@ -1,13 +1,15 @@
 name: CI/CD
 on:
   push:
-    branches: [master]
+    branches:
+      - master
   workflow_dispatch:
 
 env:
-  FUNCTIONS_NAME: sugatan_hyros
-  TOPIC_ID: hyros
+  PROJECT_ID: ${{ secrets.PROJECT_ID }}
+  SERVICE: sugatan-hyros
   REGION: us-central1
+  PYTHON_ENV: prod
 
 jobs:
   deploy:
@@ -19,17 +21,30 @@ jobs:
       - name: Setup Cloud SDK
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
+          project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      - name: Deploy to Cloud Functions
+      - name: Authorize Docker push
+        run: gcloud auth configure-docker
+
+      - name: Build and Push Container
+        run: |-
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} --build-arg BUILD_ENV=${{ env.PYTHON_ENV }} .
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+
+      - name: Deploy to Main module to Cloud Run
         run: >-
-          gcloud functions deploy ${{ env.FUNCTIONS_NAME }}
-          --entry-point=main
-          --timeout=530
-          --project=${{ secrets.PROJECT_ID }}
-          --memory=1024MB
-          --runtime=python39
-          --trigger-http
+          gcloud run deploy ${{ env.SERVICE }}
+          --image=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{  github.sha }}
+          --concurrency=1
+          --memory=1Gi
+          --cpu=1
+          --platform=managed
           --service-account=${{ secrets.GCP_SA }}
-          --set-env-vars=API_KEY=${{ secrets.API_KEY }}
+          --region=${{ env.REGION }}
+          --timeout=900
+          --set-env-vars='PROJECT_ID=${{ secrets.PROJECT_ID}},
+          USERNAME=${{ secrets.USERNAME }},
+          HYROS_PWD=${{ secrets.HYROS_PWD }},
+          PYTHON_ENV=${{ env.PYTHON_ENV }}'

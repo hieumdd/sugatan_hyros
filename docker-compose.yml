@@ -1,0 +1,23 @@
+services:
+  app:
+    image: sugatan-hyros:latest
+    build:
+      context: .
+      args:
+        BUILD_ENV: prod
+    container_name: sugatan-hyros
+    volumes:
+      - ./creds/${CREDS_FILENAME}.json:/tmp/${CREDS_FILENAME}.json
+      - ./data:/app/data
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/${CREDS_FILENAME}.json
+      K_SERVICE: dev
+      K_CONFIGURATION: dev
+      K_REVISION: dev-00001
+      USERNAME: ${USERNAME}
+      HYROS_PWD: ${HYROS_PWD}
+      PYTHON_ENV: prod
+
+    ports:
+      - '8080:8080'
+    user: '0'

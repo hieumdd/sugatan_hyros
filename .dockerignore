@@ -4,4 +4,3 @@
 .gitignore
 .pytest*
 __pycache__
-test

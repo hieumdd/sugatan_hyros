@@ -138,4 +138,6 @@ dmypy.json
 cython_debug/
 creds
 .vscode
+chromedriver
 .DS_Store
+legacy.py
