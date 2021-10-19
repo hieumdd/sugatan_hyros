@@ -397,7 +397,7 @@ def update():
     FROM (
         SELECT
             *,
-            ROW_NUMBER() OVER (PARTITION BY source, account ORDER BY _batched_at)
+            ROW_NUMBER() OVER (PARTITION BY source, account ORDER BY _batched_at DESC)
             AS row_num
         FROM {DATASET}._stage_{TABLE}
     ) WHERE row_num = 1"""
