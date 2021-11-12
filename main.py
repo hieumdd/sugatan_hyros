@@ -291,35 +291,41 @@ def transform(rows, id):
         )
         return parsed_date.strftime("%Y-%m-%d")
 
+    def transform_null(i):
+        return i if i != "-" else None
+
+    def safe_float(i):
+        return round(float(i), 6) if i else None
+
     return [
         {
             "source": transform_date(row["Source"]),
-            "clicks": round(float(row["Clicks"]), 6),
-            "cost": round(float(row["Cost"]), 6),
-            "total_revenue": round(float(row["Total Revenue"]), 6),
-            "revenue": round(float(row["Revenue"]), 6),
-            "recurring_revenue": round(float(row["Recurring revenue"]), 6),
-            "profit": round(float(row["Profit"]), 6),
-            "reported": round(float(row["Reported"]), 6),
-            "reported_vs_revenue": round(float(row["Reported VS Revenue"]), 6),
-            "sales": round(float(row["Sales"]), 6),
-            "roi": round(float(row["ROI"]) / 100, 6),
-            "roas": round(float(row["ROAS"]) / 100, 6),
-            "calls": round(float(row["Calls"]), 6),
-            "refund": round(float(row["Refund"]), 6),
-            "cost_per_sale": round(float(row["Cost per sale"]), 6),
-            "cost_per_call": round(float(row["Cost per call"]), 6),
-            "leads": round(float(row["Leads"]), 6),
-            "new_leads": round(float(row["New Leads"]), 6),
-            "cost_per_lead": round(float(row["Cost per lead"]), 6),
-            "cost_per_new_lead": round(float(row["Cost per new lead"]), 6),
-            "cost_per_unique_sale": round(float(row["Cost per unique sale"]), 6),
-            "unique_sales": round(float(row["Unique Sales"]), 6),
-            "average_over_value": round(float(row["Average Order Value"]), 6),
+            "clicks": safe_float(row["Clicks"]),
+            "cost": safe_float(row["Cost"]),
+            "total_revenue": safe_float(row["Total Revenue"]),
+            "revenue": safe_float(row["Revenue"]),
+            "recurring_revenue": safe_float(row["Recurring revenue"]),
+            "profit": safe_float(row["Profit"]),
+            "reported": safe_float(row["Reported"]),
+            "reported_vs_revenue": safe_float(row["Reported VS Revenue"]),
+            "sales": safe_float(row["Sales"]),
+            "roi": safe_float(safe_float(row["ROI"]) / 100),
+            "roas": safe_float(safe_float(row["ROAS"]) / 100),
+            "calls": safe_float(row["Calls"]),
+            "refund": safe_float(row["Refund"]),
+            "cost_per_sale": safe_float(row["Cost per sale"]),
+            "cost_per_call": safe_float(row["Cost per call"]),
+            "leads": safe_float(row["Leads"]),
+            "new_leads": safe_float(row["New Leads"]),
+            "cost_per_lead": safe_float(row["Cost per lead"]),
+            "cost_per_new_lead": safe_float(row["Cost per new lead"]),
+            "cost_per_unique_sale": safe_float(row["Cost per unique sale"]),
+            "unique_sales": safe_float(row["Unique Sales"]),
+            "average_over_value": safe_float(row["Average Order Value"]),
             "account": id,
             "_batched_at": NOW.isoformat(timespec="seconds"),
         }
-        for row in rows
+        for row in [{k: transform_null(v) for k, v in row.items()} for row in rows]
     ]
 
 
