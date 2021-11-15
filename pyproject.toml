@@ -12,11 +12,16 @@ requests = "^2.26.0"
 google-cloud-bigquery = "^2.26.0"
 functions-framework = "^2.2.1"
 dateparser = "^1.1.0"
+google-cloud-secret-manager = "^2.8.0"
+google-cloud-tasks = "^2.7.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.9b0"
 pytest = "^6.2.5"
 pytest-timeout = "^1.4.2"
+mypy = "^0.910"
+types-requests = "^2.26.0"
+types-dateparser = "^1.0.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
