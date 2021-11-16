@@ -3,7 +3,7 @@ import os
 import json
 import uuid
 
-from google.cloud import tasks_v2, secretmanager  # type: ignore
+from google.cloud import tasks_v2, secretmanager
 from google import auth
 
 TASKS_CLIENT = tasks_v2.CloudTasksClient()
