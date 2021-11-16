@@ -138,6 +138,7 @@ dmypy.json
 cython_debug/
 creds
 .vscode
-chromedriver
+chromedriver*
 .DS_Store
 legacy.py
+sugatan-p-7af1edd9bbea.json

@@ -4,16 +4,17 @@ import json
 import uuid
 
 from google.cloud import tasks_v2, secretmanager  # type: ignore
-
+from google import auth
 
 TASKS_CLIENT = tasks_v2.CloudTasksClient()
 SECRET_CLIENT = secretmanager.SecretManagerServiceClient()
+SERVICE_ACCOUNT, PROJECT_ID = auth.default()
 
 
 def get_secret(secret_id: str, version_id: int = 1) -> str:
     return SECRET_CLIENT.access_secret_version(
         request={
-            "name": f"projects/{os.getenv('PROJECT_ID')}/secrets/{secret_id}/versions/{version_id}"
+            "name": f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{version_id}"
         }
     ).payload.data.decode("UTF-8")
 
@@ -82,7 +83,7 @@ CLIENTS: list[AuthHyrosClient] = [
     },
 ]
 
-CLOUD_TASKS_PATH = (os.getenv("PROJECT_ID", ""), "us-central1", "hyros")
+CLOUD_TASKS_PATH = (PROJECT_ID, "us-central1", "hyros")
 PARENT = TASKS_CLIENT.queue_path(*CLOUD_TASKS_PATH)
 
 
@@ -90,9 +91,7 @@ def create_tasks() -> dict:
     payloads = [
         {
             "name": f"{client['name']}-{uuid.uuid4()}",
-            "payload": {
-                "client": client,
-            },
+            "payload": client,
         }
         for client in CLIENTS
     ]
@@ -106,7 +105,7 @@ def create_tasks() -> dict:
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": os.getenv("PUBLIC_URL"),
                 "oidc_token": {
-                    "service_account_email": os.getenv("GCP_SA"),
+                    "service_account_email": SERVICE_ACCOUNT.service_account_email,
                 },
                 "headers": {
                     "Content-type": "application/json",

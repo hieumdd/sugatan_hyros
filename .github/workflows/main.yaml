@@ -35,7 +35,7 @@ jobs:
       - name: Deploy to Main module to Cloud Run
         run: >-
           gcloud run deploy ${{ env.SERVICE }}
-          --image=gcr.io/${{ secrets.PROJECT_ID }}/${{ env.SERVICE }}:${{  github.sha }}
+          --image=gcr.io/${{ secrets.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           --concurrency=1
           --memory=1Gi
           --cpu=1
@@ -43,4 +43,4 @@ jobs:
           --service-account=${{ secrets.GCP_SA }}
           --region=us-central1
           --timeout=900
-          --set-env-vars=PROJECT_ID=${{ secrets.PROJECT_ID }},PYTHON_ENV=${{ env.PYTHON_ENV }},PUBLIC_URL=${{ env.PUBLIC_URL }}
+          --set-env-vars=PYTHON_ENV=${{ env.PYTHON_ENV }},PUBLIC_URL=${{ env.PUBLIC_URL }}
