@@ -7,6 +7,8 @@ on:
 
 env:
   SERVICE: sugatan-hyros
+  PROJECT_ID: sugatan-p
+  GCP_SA: etl-pipelines@sugatan-p.iam.gserviceaccount.com
   PUBLIC_URL: https://sugatan-hyros-k6ztmhgstq-uc.a.run.app
   PYTHON_ENV: prod
 
@@ -20,7 +22,7 @@ jobs:
       - name: Setup Cloud SDK
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
-          project_id: ${{ secrets.PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
@@ -29,18 +31,18 @@ jobs:
 
       - name: Build and Push Container
         run: |-
-          DOCKER_BUILDKIT=1 docker build -t gcr.io/${{ secrets.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} --build-arg BUILD_ENV=${{ env.PYTHON_ENV }} .
-          docker push gcr.io/${{ secrets.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          DOCKER_BUILDKIT=1 docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} --build-arg BUILD_ENV=${{ env.PYTHON_ENV }} .
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
 
       - name: Deploy to Main module to Cloud Run
         run: >-
           gcloud run deploy ${{ env.SERVICE }}
-          --image=gcr.io/${{ secrets.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          --image=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           --concurrency=1
           --memory=1Gi
           --cpu=1
           --platform=managed
-          --service-account=${{ secrets.GCP_SA }}
+          --service-account=${{ env.GCP_SA }}
           --region=us-central1
           --timeout=900
-          --set-env-vars=PYTHON_ENV=${{ env.PYTHON_ENV }},PUBLIC_URL=${{ env.PUBLIC_URL }}
+          --set-env-vars=PYTHON_ENV=${{ env.PYTHON_ENV }},PUBLIC_URL=${{ env.PUBLIC_URL }},GCP_SA=${{ env.GCP_SA }}
