@@ -8,7 +8,7 @@ from google import auth
 
 TASKS_CLIENT = tasks_v2.CloudTasksClient()
 SECRET_CLIENT = secretmanager.SecretManagerServiceClient()
-SERVICE_ACCOUNT, PROJECT_ID = auth.default()
+_, PROJECT_ID = auth.default()
 
 
 def get_secret(secret_id: str, version_id: int = 1) -> str:
@@ -105,7 +105,7 @@ def create_tasks() -> dict:
                 "http_method": tasks_v2.HttpMethod.POST,
                 "url": os.getenv("PUBLIC_URL"),
                 "oidc_token": {
-                    "service_account_email": SERVICE_ACCOUNT.service_account_email,
+                    "service_account_email": os.getenv('GCP_SA'),
                 },
                 "headers": {
                     "Content-type": "application/json",
@@ -115,7 +115,8 @@ def create_tasks() -> dict:
         }
         for payload in payloads
     ]
-    responses = [
+    return {
+        "tasks": len([
         TASKS_CLIENT.create_task(
             request={
                 "parent": PARENT,
@@ -123,7 +124,5 @@ def create_tasks() -> dict:
             }
         )
         for task in tasks
-    ]
-    return {
-        "tasks": len(responses),
+    ]),
     }
