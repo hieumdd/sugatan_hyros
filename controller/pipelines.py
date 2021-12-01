@@ -1,5 +1,5 @@
-from controller.hyros import get
-from controller.bigquery import load
+from libs.hyros import get
+from libs.bigquery import load
 from controller.tasks import AuthHyrosClient
 
 
