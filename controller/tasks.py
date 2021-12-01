@@ -79,6 +79,10 @@ CLIENTS: list[AuthHyrosClient] = [
                 "name": "Hyros",
                 "id": "2390622652",
             },
+            {
+                "name": "SniffAndBark",
+                "id": "7028686928518119425",
+            },
         ],
     },
 ]
