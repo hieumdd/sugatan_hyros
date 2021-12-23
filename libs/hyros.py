@@ -101,9 +101,9 @@ def get_report_request(user: str, pwd: str) -> Request:
 def modifiy_request(request: Request, id: str) -> tuple[str, dict, dict]:
     end = datetime.utcnow()
     start = end - timedelta(days=30)
-    headers = request.headers
     body = json.loads(request.body.decode())
     modified_body = {
+        **body,
         "start": start.strftime("%d-%m-%Y"),
         "end": end.strftime("%d-%m-%Y"),
         "customerIds": [id],
@@ -138,40 +138,8 @@ def modifiy_request(request: Request, id: str) -> tuple[str, dict, dict]:
         }
         if body.get("groupBConfiguration", {})
         else {},
-        "days": body.get("days"),
-        "sourceLinkName": body.get("sourceLinkName"),
-        "leadTags": body.get("leadTags"),
-        "notLeadTags": body.get("notLeadTags"),
-        "productTags": body.get("productTags"),
-        "percentage": body.get("percentage"),
-        "firstSourceLinkPercentage": body.get("firstSourceLinkPercentage"),
-        "dayOfAttribution": body.get("dayOfAttribution"),
-        "filterNoSale": body.get("filterNoSale"),
-        "scientificDaysRange,": body.get("scientificDaysRange,"),
-        "emailSourceOptions": body.get("emailSourceOptions"),
-        "optimizeReport": body.get("optimizeReport"),
-        "excludeHardCosts": body.get("excludeHardCosts"),
-        "ignoreRecurringSales": body.get("ignoreRecurringSales"),
-        "groups": body.get("groups"),
-        "compareTotalSales": body.get("compareTotalSales"),
-        "compareTotalSalesBy": body.get("compareTotalSalesBy"),
-        "origin": body.get("origin"),
-        "financialStatsType": body.get("financialStatsType"),
-        "sourceCategoryIds": body.get("sourceCategoryIds"),
-        "trafficSourceIds": body.get("trafficSourceIds"),
-        "goalIds": body.get("goalIds"),
-        "productCategoryIds": body.get("productCategoryIds"),
-        "sourceLinkFilterCriteria": body.get("sourceLinkFilterCriteria"),
-        "qReportName": body.get("qReportName"),
-        "financialDashboardType": body.get("financialDashboardType"),
-        "segment": body.get("segment"),
     }
-    modified_headers = {
-        "accept": "application/json",
-        "userloginid": headers["userloginid"],
-        "authtoken": headers["authtoken"],
-    }
-    return request.url, modified_headers, modified_body
+    return request.url, request.headers, modified_body
 
 
 def post_modified_request(
