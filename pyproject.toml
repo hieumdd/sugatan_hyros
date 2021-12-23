@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 addopts = "-s --durations=0"
-timeout = 540
+# timeout = 540
 testpaths = [
     "test",
 ]
