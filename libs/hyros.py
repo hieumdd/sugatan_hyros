@@ -76,7 +76,7 @@ def get_report_request(user: str, pwd: str) -> Request:
     # Click generate report
     time.sleep(5)
     last_click = driver.find_element_by_xpath(
-        "/html/body/div[3]/div/div/div[1]/report-selection-directive/div[3]/div/div[1]/div[2]/p[1]"
+        "/html/body/div[3]/div/div/div[1]/report-selection-directive/div[3]/div/div/div[1]"
     )
     driver.execute_script("arguments[0].click();", last_click)
     print("Generate Last Click Report")
@@ -109,32 +109,16 @@ def modifiy_request(request: Request, id: str) -> tuple[str, dict, dict]:
         "customerIds": [id],
         "timeGroupingOption": "DAY",
         "groupAConfiguration": {
+            **body["groupAConfiguration"],
             "start": start.strftime("%d-%m-%Y"),
             "end": end.strftime("%d-%m-%Y"),
-            "productTags": body["groupAConfiguration"].get("productTags"),
-            "productCategories": body["groupAConfiguration"].get("productCategories"),
-            "leadTags": body["groupAConfiguration"].get("leadTags"),
-            "notLeadTags": body["groupAConfiguration"].get("notLeadTags"),
-            "ignoreRecurringSales": body["groupAConfiguration"].get(
-                "ignoreRecurringSales"
-            ),
-            "excludeHardCosts": body["groupAConfiguration"].get("excludeHardCosts"),
-            "productCategoryIds": body["groupAConfiguration"].get("productCategoryIds"),
         }
         if body.get("groupAConfiguration", {})
         else {},
         "groupBConfiguration": {
+            **body["groupBConfiguration"],
             "start": start.strftime("%d-%m-%Y"),
             "end": end.strftime("%d-%m-%Y"),
-            "productTags": body["groupBConfiguration"].get("productTags"),
-            "productCategories": body["groupBConfiguration"].get("productCategories"),
-            "leadTags": body["groupBConfiguration"].get("leadTags"),
-            "notLeadTags": body["groupBConfiguration"].get("notLeadTags"),
-            "ignoreRecurringSales": body["groupBConfiguration"].get(
-                "ignoreRecurringSales"
-            ),
-            "excludeHardCosts": body["groupBConfiguration"].get("excludeHardCosts"),
-            "productCategoryIds": body["groupBConfiguration"].get("productCategoryIds"),
         }
         if body.get("groupBConfiguration", {})
         else {},
@@ -181,37 +165,39 @@ def poll_request(
 def get_csv(session: requests.Session, url: str, headers: dict, key: str) -> list[dict]:
     with session.post(
         f"{url.replace('stats', 'export-report')}/{key}",
-        headers={
-            **headers,
-            "excludeinactive": "true",
+        headers=headers,
+        json={
+            "columns": [
+                "AOV",
+                "AD_ID",
+                "BUDGET",
+                "CALLS",
+                "CLICKS",
+                "COST",
+                "COST_PER_CALL",
+                "COST_PER_SALE",
+                "COST_PER_LEAD",
+                "COST_PER_NEW_LEAD",
+                "COST_PER_UNIQUE_SALE",
+                "LEADS",
+                "NEW_LEADS",
+                "PROFIT",
+                "RECURRING_REVENUE",
+                "REFUND",
+                "REPORTED",
+                "REPORTED_VS_REVENUE",
+                "REVENUE",
+                "ROI",
+                "ROAS",
+                "SALES",
+                "STATUS",
+                "TOTAL_REVENUE",
+                "UNIQUE_SALES",
+            ],
+            "excludeInactive": True,
+            "groupOption": "SOURCE_LINK",
+            "reportType": "DURING",
         },
-        json=[
-            "AOV",
-            "AD_ID",
-            "BUDGET",
-            "CALLS",
-            "CLICKS",
-            "COST",
-            "COST_PER_CALL",
-            "COST_PER_SALE",
-            "COST_PER_LEAD",
-            "COST_PER_NEW_LEAD",
-            "COST_PER_UNIQUE_SALE",
-            "LEADS",
-            "NEW_LEADS",
-            "PROFIT",
-            "RECURRING_REVENUE",
-            "REFUND",
-            "REPORTED",
-            "REPORTED_VS_REVENUE",
-            "REVENUE",
-            "ROI",
-            "ROAS",
-            "SALES",
-            "STATUS",
-            "TOTAL_REVENUE",
-            "UNIQUE_SALES",
-        ],
     ) as r:
         res = r.content
     decoded_content = res.decode("utf-8")
@@ -280,6 +266,7 @@ def transform(rows: list[dict], id: str) -> list[dict]:
             "_batched_at": NOW.isoformat(timespec="seconds"),
         }
         for row in [{k: transform_null(v) for k, v in row.items()} for row in rows]
+        if row["Source"] != "Total"
     ]
 
 
