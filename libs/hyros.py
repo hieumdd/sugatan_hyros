@@ -51,6 +51,7 @@ def get_report_request(user: str, pwd: str) -> Request:
     # Navtigate to URL
     driver.get("https://app.hyros.com/?avoidRedirect=true#/login")
     print("Home")
+    time.sleep(5)
 
     # Input username & pwd
     username = driver.find_element_by_name("username")
@@ -60,8 +61,8 @@ def get_report_request(user: str, pwd: str) -> Request:
     print("Typed Login")
 
     # Click login
-    login_button = driver.find_element_by_xpath(
-        '//*[@id="page-top"]/div[3]/div/div[2]/div/form/div[3]/button'
+    login_button = driver.find_element_by_class_name(
+        "hbutton"
     )
     driver.execute_script("arguments[0].click();", login_button)
     print("Login")
@@ -75,27 +76,18 @@ def get_report_request(user: str, pwd: str) -> Request:
 
     # Click generate report
     time.sleep(5)
-    last_click = driver.find_element_by_xpath(
-        "/html/body/div[3]/div/div/div[1]/report-selection-directive/div[3]/div/div/div[1]"
-    )
-    driver.execute_script("arguments[0].click();", last_click)
-    print("Generate Last Click Report")
+    driver.get("https://app.hyros.com/#/mh/reporting/last-click")
+    print("Navigate to Last Click Report")
 
     generate = driver.find_element_by_xpath(
-        "/html/body/div[3]/div/div/div[1]/report-directive/div/div[2]/section/div[3]/button[1]"
+        "//*[@data-test='generateReport']"
     )
     driver.execute_script("arguments[0].click();", generate)
     time.sleep(10)
 
-    xhr_requests = [
-        request
-        for request in driver.requests
-        if request.response
-        and "sourceboardV2" in request.url
-        and "stats" in request.url
-    ]
+    request = driver.wait_for_request("stats", timeout=240)
     driver.quit()
-    return xhr_requests[0]
+    return request
 
 
 def modifiy_request(request: Request, id: str) -> tuple[str, dict, dict]:
