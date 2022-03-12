@@ -49,7 +49,7 @@ def get_report_request(user: str, pwd: str) -> Request:
     driver.implicitly_wait(20)
 
     # Navtigate to URL
-    driver.get("https://app.hyros.com/?avoidRedirect=true#/login")
+    driver.get("https://app.hyros.com/public/#/login")
     print("Home")
     time.sleep(5)
 
@@ -69,10 +69,6 @@ def get_report_request(user: str, pwd: str) -> Request:
 
     # Wait for login
     time.sleep(5)
-
-    # Navigate to Report
-    driver.get("https://app.hyros.com/#/mh/reporting")
-    print("Navigate to Report")
 
     # Click generate report
     time.sleep(5)
